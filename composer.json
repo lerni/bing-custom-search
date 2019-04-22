@@ -1,0 +1,23 @@
+{
+  "name": "kraftausdruck/bing-custom-search",
+  "type": "silverstripe-vendormodule",
+  "description": "Bing Custom Search integration for SilverStripe",
+  "keywords": ["silverstripe", "bing", "custom", "seach"],
+  "authors": [
+    {
+      "name": "Lukas Erni",
+      "email": "le@kraftausdruck.ch"
+    }
+  ],
+  "require": {
+    "silverstripe/framework": "^4",
+    "silverstripe/cms": "^4",
+    "silverstripe/siteconfig": "^4"
+  },
+  "license": "BSD-3-Clause",
+  "autoload": {
+    "psr-4": {
+      "Kraftausdruck\\Extensions\\": "src/"
+    }
+  }
+}
