@@ -2,8 +2,8 @@
 Name: bing-custom-search
 ---
 #Kraftausdruck\Extensions\BingSearchExtender:
-#  AccessKey: '9c00a99ih3d13d072ca96e74596b6e56'
-#  CustomConfig: '9eba76ca-ae3e-00d3-0c90-d0dc34bb7788'
+#  AccessKey: ''
+#  CustomConfig: ''
 #  mkt: 'en_US'
 PageController:
   extensions:

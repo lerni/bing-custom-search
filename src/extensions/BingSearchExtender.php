@@ -2,113 +2,119 @@
 
 namespace Kraftausdruck\Extensions;
 
-use SilverStripe\Core\Config\Config;
-use SilverStripe\Core\Convert;
-use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\Form;
-use SilverStripe\Forms\FormAction;
-use SilverStripe\Forms\RequiredFields;
-use SilverStripe\Forms\TextField;
-use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\DataExtension;
-use SilverStripe\ORM\DataObject;
-use GuzzleHttp\Client;
 
-/**
- * Class BingSearchExtender
- */
+use GuzzleHttp\Client;
+use SilverStripe\Forms\Form;
+use SilverStripe\Core\Convert;
+use SilverStripe\ORM\ArrayList;
+use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\TextField;
+use SilverStripe\Core\Environment;
+use SilverStripe\Forms\FormAction;
+use SilverStripe\ORM\DataExtension;
+use SilverStripe\View\ViewableData;
+use SilverStripe\Core\Config\Config;
+
+
 class BingSearchExtender extends DataExtension
 {
-	private static $allowed_actions = array(
-		'SeachForm'
-	);
+    private static $allowed_actions = [
+        'SearchForm'
+    ];
 
-	public function Search($data, Form $form)
-	{
-		$ApiKey = Config::inst()->get(static::class, 'AccessKey');
-		$CustomConfig = Config::inst()->get(static::class, 'CustomConfig');
-		$saveQuery = Convert::raw2sql(trim($data['Search']));
-		unset($decodedresponse);
-		$results = ArrayList::create();
+    public function Search($data, Form $form)
+    {
 
-		if(strlen($saveQuery))
-		{
-			$client = new Client([
-				// Base URI is used with relative requests
-				'base_uri' => 'https://api.cognitive.microsoft.com',
-				'timeout'  => 2.0
-			]);
+        $apiKey = Environment::getEnv('AZURE_COGNITIVE_SEARCH_KEY') ?: Config::inst()->get(static::class, 'AccessKey');
+        $customConfig = Environment::getEnv('AZURE_COGNITIVE_SEARCH_CUSTOMCONFIG') ?: Config::inst()->get(static::class, 'CustomConfig');
 
-			$response = $client->request('GET','/bingcustomsearch/v7.0/search', [
-				// 'debug' => true,
-				'headers' => [
-					'Ocp-Apim-Subscription-Key' => $ApiKey
-				],
-				'query' => [
-					'q' => $saveQuery,
-					'customconfig' => $CustomConfig,
-					'mkt' => 'de-CH'
-				]
-			]);
-			$decodedresponse = json_decode($response->getBody(), true);
-		}
+        $saveQuery = Convert::raw2sql(trim($data['Search']));
+        unset($decodedresponse);
+        $results = ArrayList::create();
 
-		if (isset($decodedresponse['webPages']))
-		{
-			foreach ($decodedresponse['webPages']['value'] as $result)
-			{
-				$m = DataObject::create();
+        if (strlen($saveQuery)) {
+            $client = new Client([
+                // Base URI is used with relative requests
+                'base_uri' => 'https://api.bing.microsoft.com',
+                'timeout'  => 2.0
+            ]);
+            $response = $client->request('GET', '/v7.0/custom/search', [
+                // 'debug' => true,
+                'headers' => [
+                    'Ocp-Apim-Subscription-Key' => $apiKey
+                ],
+                'query' => [
+                    'q' => $saveQuery,
+                    'customconfig' => $customConfig,
+                    'mkt' => 'de-CH'
+                ]
+            ]);
+            $decodedresponse = json_decode($response->getBody(), true);
+        }
 
-				if (isset($result['id'])) {
-					$m->ID = $result['id'];
-				}
-				if (isset($result['url'])) {
-					$m->URL = $result['url'];
-				}
-				if (isset($result['name'])) {
-					$m->Name = $result['name'];
-				}
-				if (isset($result['snippet'])) {
-					$m->Description = $result['snippet'];
-				}
-				if (isset($result['url'])) {
-					$m->URL = $result['url'];
-				}
+        if (isset($decodedresponse['webPages'])) {
+            foreach ($decodedresponse['webPages']['value'] as $result) {
+                $m = ViewableData::create();
 
-				$results->push($m);
-			}
-		}
-		return $this->owner->customise(array('SearchResults' => $results));
-	}
+                if (isset($result['id'])) {
+                    $m->ID = $result['id'];
+                }
+                if (isset($result['url'])) {
+                    $m->URL = $result['url'];
+                }
+                if (isset($result['name'])) {
+                    $m->Name = $result['name'];
+                }
+                if (isset($result['snippet'])) {
+                    $m->Description = $result['snippet'];
+                }
+                if (isset($result['url'])) {
+                    $m->URL = $result['url'];
+                }
+                if (isset($result['openGraphImage']) && isset($result['openGraphImage']['contentUrl'])) {
+                    $m->OpenGraphImageURL = $result['openGraphImage']['contentUrl'];
+                }
 
-	public function SearchResults()
-	{
-		if (isset($data) && array_key_exists('Search',$data))
-		{
-			return $this->Search();
-		}
-	}
+                $results->push($m);
+            }
+        }
 
-	public function SeachForm()
-	{
-		$fields = new FieldList(
-			TextField::create('Search', '')
-		);
+        return $results->renderWith('Kraftausdruck/SearchResults');
 
-		$actions = new FieldList(
-			FormAction::create('Search')->setTitle('Suchen')
-		);
+    }
 
-		//$required = new RequiredFields('Search');
+    public function SearchResults()
+    {
+        if (isset($data) && array_key_exists('Search', $data)) {
+            return $this->Search();
+        }
+    }
 
-		$form = new Form($this->owner, 'SeachForm', $fields, $actions);
-		$form->setTemplate('SearchForm');
-		$form->setAttribute('up-target', '.floating-content .search .txt');
+    public function SearchForm()
+    {
+        $fields = new FieldList(
+            TextField::create('Search', '')
+        );
 
-		$form->setFormMethod('GET')
-			->disableSecurityToken()
-			->loadDataFrom($this->owner->request->getVars());
+        $actions = new FieldList(
+            FormAction::create('Search')->setTitle('Suchen')
+        );
 
-		return $form;
-	}
+
+        //$required = new RequiredFields('Search');
+
+        $form = new Form($this->owner, 'SearchForm', $fields, $actions);
+        $form->setTemplate('SearchForm');
+        $form->setAttribute('data-hx-target', '.search-results');
+        $form->setAttribute('data-hx-get', $form->FormAction());
+        $form->setAttribute('data-hx-indicator', '.loader.search');
+
+        $form->setFormMethod('GET')
+            ->disableSecurityToken()
+            ->loadDataFrom($this->owner->request->getVars());
+
+        $form->setTemplate('Kraftausdruck/SearchForm');
+
+        return $form;
+    }
 }
