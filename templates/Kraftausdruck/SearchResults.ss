@@ -1,6 +1,6 @@
-<% if $Me %>
+<% if $SearchResults.Count() %>
 	<ol class="results">
-		<% loop $Me %>
+		<% loop $SearchResults %>
 			<li>
 				<a href="$URL">
 					<div class="result-txt">

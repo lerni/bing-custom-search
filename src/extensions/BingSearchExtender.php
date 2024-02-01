@@ -72,14 +72,18 @@ class BingSearchExtender extends DataExtension
                     $m->URL = $result['url'];
                 }
                 if (isset($result['openGraphImage']) && isset($result['openGraphImage']['contentUrl'])) {
-                    $m->OpenGraphImageURL = $result['openGraphImage']['contentUrl'];
+                    // ensure https
+                    $url = preg_replace("/^http:/i", "https:", $result['openGraphImage']['contentUrl']);
+                    $m->OpenGraphImageURL = $url;
                 }
 
                 $results->push($m);
             }
         }
+        $customize = ArrayList::create();
+        $customize->SearchResults = $results;
 
-        return $results->renderWith('Kraftausdruck/SearchResults');
+        return $customize->renderWith('Kraftausdruck/SearchResults');
 
     }
 
