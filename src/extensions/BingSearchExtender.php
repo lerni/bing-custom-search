@@ -18,6 +18,9 @@ use SilverStripe\Core\Config\Config;
 
 class BingSearchExtender extends DataExtension
 {
+
+    private static $azure_timeout = 2.0;
+
     private static $allowed_actions = [
         'SearchForm'
     ];
@@ -31,12 +34,13 @@ class BingSearchExtender extends DataExtension
         $saveQuery = Convert::raw2sql(trim($data['Search']));
         unset($decodedresponse);
         $results = ArrayList::create();
+        $timeout = Config::inst()->get(static::class, 'azure_timeout');
 
         if (strlen($saveQuery)) {
             $client = new Client([
                 // Base URI is used with relative requests
                 'base_uri' => 'https://api.bing.microsoft.com',
-                'timeout'  => 2.0
+                'timeout'  => $timeout
             ]);
             $response = $client->request('GET', '/v7.0/custom/search', [
                 // 'debug' => true,
@@ -84,7 +88,6 @@ class BingSearchExtender extends DataExtension
         $customize->SearchResults = $results;
 
         return $customize->renderWith('Kraftausdruck/SearchResults');
-
     }
 
     public function SearchResults()
